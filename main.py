@@ -211,7 +211,6 @@ def animate_360_rotation(axis_index, last_frame, obj=None, clockwise=False, line
 
 
 # Function to apply rotation transformation
-
 def apply_rotation():
     bpy.ops.object.transform_apply(rotation=True)
 
@@ -266,9 +265,11 @@ def create_reflective_material(color, name=None, roughness=0.1, specular=0.5, re
     material = bpy.data.materials.new(name=f"material.reflective.{name}")
     material.use_nodes = True
 
-    material.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = color
-    material.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = roughness
-    material.node_tree.nodes["Principled BSDF"].inputs["Specular"].default_value = specular
+    bsdf_node = material.node_tree.nodes.get("Principled BSDF")
+    if bsdf_node and "Specular" in bsdf_node.inputs:  # Check for "Specular" input
+        bsdf_node.inputs["Base Color"].default_value = color
+        bsdf_node.inputs["Roughness"].default_value = roughness
+        bsdf_node.inputs["Specular"].default_value = specular  # Set "Specular" value if exists
 
     if return_nodes:
         return material, material.node_tree.nodes
@@ -440,27 +441,56 @@ def render_loop():
 # H E L P E R    F U N C T I O N S    E N D
 ################################################
 
-def create_centerpiece(context):
-    # bpy.context.object.data.path_duration = 360
 
-    # Add horizontal circle
-    bpy.ops.curve.primitive_bezier_circle_add()
+def apply_metaball_material():
+    color = get_random_color()
+    material = create_reflective_material(color, name="metaball", roughness=0.1, specular=0.5)
+
+    primary_metaball = bpy.data.metaballs[0]
+    primary_metaball.materials.append(material)
+
+
+def create_metaball_path(context):
+    bpy.ops.curve.primitive_bezier_circle_add()  # Add horizontal circle
     path = active_object()
+
+    bpy.context.object.data.path_duration = context['frame_count']
 
     # Move the bezier curve "loop" along the X axis
     animate_360_rotation(Axis.X, context['frame_count'], path, clockwise=random.randint(0, 1))
 
     apply_random_rotation()
 
+    if random.randint(0, 1):
+        path.scale.x *= random.uniform(0.05, 0.5)
+    else:
+        path.scale.y *= random.uniform(0.05, 0.5)
+
+    return path
+
+
+def create_metaball(path):
     bpy.ops.object.metaball_add()
     ball = active_object()  # Get the newly added metaball
 
     ball.data.render_resolution = 0.05
     ball.scale *= random.uniform(0.05, 0.5)
 
+    # Move the ball on the bezier curve
     bpy.ops.object.constraint_add(type='FOLLOW_PATH')
     bpy.context.object.constraints["Follow Path"].target = path
     bpy.ops.constraint.followpath_path_animate(constraint="Follow Path", owner='OBJECT')
+
+
+def create_centerpiece(context):
+    metaball_count = 10
+
+    for _ in range(metaball_count):
+        path = create_metaball_path(context)
+
+        create_metaball(path)
+
+    apply_metaball_material()
 
 
 def create_background():
@@ -481,4 +511,5 @@ if __name__ == "__main__":
 # Shift + A - Add objects -> Metaball -> Ball
 
 # Z -> Rendered
-# Meatall -> Data -> Render resolution -> lower the better / smoother
+# Metaball -> Data -> Render resolution -> lower the better / smoother
+# Metaballs are "blobby: objects
