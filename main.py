@@ -21,9 +21,11 @@ class Axis:
 
 
 # Workaround function
-# Delete data-blocks associated with thew deleted objects - orphan-data
-# So a material linked to an object etc...
 def purge_orphans():
+    """
+    Delete data-blocks associated with deleted objects (orphan-data).
+    This includes materials linked to objects, etc.
+    """
     if bpy.app.version >= (3, 0, 0):
         bpy.ops.outliner.orphans_purge(
             do_local_ids=True, do_linked_ids=True, do_recursive=True
@@ -75,8 +77,12 @@ def clean_scene():
 
 def time_seed():
     """
-    Sets the random seed based on the time
-    and copies the seed into the clipboard
+    Set the random seed based on the current time and copy the seed into the clipboard.
+
+    Returns
+    -------
+    float
+        The seed value based on the current time.
     """
     seed = time.time()
     random.seed(seed)
@@ -89,7 +95,17 @@ def time_seed():
 
 def add_ctrl_empty(name=None):
     """
-    Function to add an empty object for control purposes
+    Add an empty object for control purposes.
+
+    Parameters
+    ----------
+    name : str, optional
+        The name to assign to the empty object. If None, defaults to "empty.cntrl".
+
+    Returns
+    -------
+    bpy.types.Object
+        The newly added empty object.
     """
     bpy.ops.object.empty_add(type="PLAIN_AXES", align="WORLD")
     empty_ctrl = active_object()  # Get the newly added empty object
@@ -102,9 +118,21 @@ def add_ctrl_empty(name=None):
     return empty_ctrl
 
 
+def active_object():
+    '''
+    Return name of currently active/selected object
+    '''
+    return bpy.context.active_object
+
+
 def make_active(obj):
     """
-    Function to make a given object active
+    Make a given object active.
+
+    Parameters
+    ----------
+    obj : bpy.types.Object
+        The object to make active.
     """
     bpy.ops.object.select_all(action="DESELECT")  # Deselect all objects
     obj.select_set(True)  # Select the given object
@@ -113,7 +141,17 @@ def make_active(obj):
 
 def track_empty(obj):
     """
-    create an empty and add a 'Track To' constraint
+    Create an empty object and add a 'Track To' constraint to it.
+
+    Parameters
+    ----------
+    obj : bpy.types.Object
+        The object to which the 'Track To' constraint will be added.
+
+    Returns
+    -------
+    bpy.types.Object
+        The empty object created for tracking.
     """
     empty = add_ctrl_empty(name=f"empty.tracker-target.{obj.name}")
 
@@ -133,13 +171,26 @@ def set_1080px_square_render_res():
 
 
 def set_fcurve_extrapolation_to_linear():
+    """
+    Set the extrapolation of all F-curves of the active object's animation data to linear.
+    """
     for fc in bpy.context.active_object.animation_data.action.fcurves:
         fc.extrapolation = "LINEAR"
 
 
 def hex_color_to_rgb(hex_color):
     """
-    Converting from a color in the form of a hex triplet string to a Linear RGB
+    Convert a color from a hex triplet string to Linear RGB.
+
+    Parameters
+    ----------
+    hex_color : str
+        The hex color string (e.g., "#RRGGBB" or "RRGGBB").
+
+    Returns
+    -------
+    tuple
+        The corresponding Linear RGB color tuple.
     """
 
     if hex_color.startswith("#"):
@@ -167,17 +218,38 @@ def hex_color_to_rgb(hex_color):
 
 def hex_color_to_rgba(hex_color, alpha=1.0):
     """
-    Converting from a color in the form of a hex triplet string to a Linear RGB with an Alpha passed as a parameter
-    Supports: "#RRGGBB" or "RRGGBB"
+    Convert a color from a hex triplet string to Linear RGB with an Alpha channel.
+
+    Parameters
+    ----------
+    hex_color : str
+        The hex color string (e.g., "#RRGGBB" or "RRGGBB").
+    alpha : float, optional
+        The alpha value to use (default is 1.0).
+
+    Returns
+    -------
+    tuple
+        The corresponding Linear RGBA color tuple.
     """
     linear_red, linear_green, linear_blue = hex_color_to_rgb(hex_color)
     return tuple([linear_red, linear_green, linear_blue, alpha])
 
 
+# https://entropymine.com/imageworsener/srgbformula/
 def convert_srgb_to_linear_rgb(srgb_color_component):
     """
-    Converting from sRGB to Linear RGB
-    https://entropymine.com/imageworsener/srgbformula/
+    Convert from sRGB to Linear RGB.
+
+    Parameters
+    ----------
+    srgb_color_component : float
+        The sRGB color component (0.0 to 1.0).
+
+    Returns
+    -------
+    float
+        The corresponding Linear RGB color component.
     """
     if srgb_color_component <= 0.04045:
         linear_color_component = srgb_color_component / 12.92
@@ -188,6 +260,26 @@ def convert_srgb_to_linear_rgb(srgb_color_component):
 
 
 def animate_rotation(angle, axis_index, last_frame, obj=None, clockwise=False, linear=True, start_frame=1):
+    """
+    Animate the rotation of an object.
+
+    Parameters
+    ----------
+    angle : float
+        The angle to rotate the object.
+    axis_index : int
+        The index of the axis to rotate around (0 for X, 1 for Y, 2 for Z).
+    last_frame : int
+        The frame at which the rotation should end.
+    obj : bpy.types.Object, optional
+        The object to rotate. If None, uses the active object.
+    clockwise : bool, optional
+        Whether to rotate clockwise (default is False).
+    linear : bool, optional
+        Whether to use linear interpolation (default is True).
+    start_frame : int, optional
+        The frame at which the rotation should start (default is 1).
+    """
     if not obj:
         obj = active_object()  # Use active object if none provided
     frame = start_frame
@@ -205,19 +297,29 @@ def animate_rotation(angle, axis_index, last_frame, obj=None, clockwise=False, l
         set_fcurve_extrapolation_to_linear()
 
 
-# Function to animate a full 360-degree rotation
 def animate_360_rotation(axis_index, last_frame, obj=None, clockwise=False, linear=True, start_frame=1):
+    """
+    Function to animate a full 360-degree rotation
+
+    Parameters
+    ----------
+    See animate_rotation()
+    """
     animate_rotation(360, axis_index, last_frame, obj, clockwise, linear, start_frame)
 
 
-# Function to apply rotation transformation
 def apply_rotation():
+    """
+    Function to apply rotation transformation to an active object
+    """
     bpy.ops.object.transform_apply(rotation=True)
 
 
 # random.uniform() - draw samples from uniform distribution
-# Function to apply random rotation to an object
 def apply_random_rotation():
+    """
+    Function to apply random rotation to an object
+    """
     obj = active_object()
     obj.rotation_euler.x = math.radians(random.uniform(0, 360))
     obj.rotation_euler.y = math.radians(random.uniform(0, 360))
@@ -225,15 +327,26 @@ def apply_random_rotation():
     apply_rotation()
 
 
-# Function to apply emission material to an object
-def apply_emission_material(color, name=None, energy=1):
-    material = create_emission_material(color, name=name, energy=energy)
-
-    obj = active_object()
-    obj.data.materials.append(material)
-
-
 def create_emission_material(color, name=None, energy=30, return_nodes=False):
+    """
+    Create an emission material.
+
+    Parameters
+    ----------
+    color : tuple
+        The color of the emission material in Linear RGB.
+    name : str, optional
+        The name of the material (default is None).
+    energy : float, optional
+        The energy value of the emission shader (default is 30).
+    return_nodes : bool, optional
+        Whether to return the nodes of the material (default is False).
+
+    Returns
+    -------
+    bpy.types.Material or tuple
+        The created emission material or a tuple of the material and its nodes if return_nodes is True.
+    """
     if name is None:
         name = ""
 
@@ -258,21 +371,52 @@ def create_emission_material(color, name=None, energy=30, return_nodes=False):
         return material
 
 
+def apply_emission_material(color, name=None, energy=1):
+    """
+    Function to apply emission material to an object
+    """
+    material = create_emission_material(color, name=name, energy=energy)
+
+    obj = active_object()
+    obj.data.materials.append(material)
+
+
 def create_reflective_material(color, name=None, roughness=0.1, specular=0.5, return_nodes=False):
+    """
+    Create a reflective material.
+    """
     if name is None:
         name = ""
 
+    # Create a new material
     material = bpy.data.materials.new(name=f"material.reflective.{name}")
     material.use_nodes = True
 
-    bsdf_node = material.node_tree.nodes.get("Principled BSDF")
-    if bsdf_node and "Specular" in bsdf_node.inputs:  # Check for "Specular" input
+    # Clear existing nodes
+    nodes = material.node_tree.nodes
+    nodes.clear()
+
+    # Add a Principled BSDF node
+    bsdf_node = nodes.new(type="ShaderNodeBsdfPrincipled")
+    bsdf_node.location = (0, 0)
+
+    # Check if the Principled BSDF node has the necessary inputs
+    if "Base Color" in bsdf_node.inputs:
         bsdf_node.inputs["Base Color"].default_value = color
+    if "Roughness" in bsdf_node.inputs:
         bsdf_node.inputs["Roughness"].default_value = roughness
-        bsdf_node.inputs["Specular"].default_value = specular  # Set "Specular" value if exists
+    if "Specular" in bsdf_node.inputs:
+        bsdf_node.inputs["Specular"].default_value = specular
+
+    # Add a Material Output node
+    output_node = nodes.new(type="ShaderNodeOutputMaterial")
+    output_node.location = (200, 0)
+
+    # Link the BSDF node to the Material Output node
+    material.node_tree.links.new(bsdf_node.outputs["BSDF"], output_node.inputs["Surface"])
 
     if return_nodes:
-        return material, material.node_tree.nodes
+        return material, nodes
     else:
         return material
 
@@ -285,6 +429,9 @@ def apply_reflective_material(color, name=None, roughness=0.1, specular=0.5):
 
 
 def get_random_color():
+    """
+    return random color from a list
+    """
     hex_color = random.choice(
         [
             "#FC766A",
@@ -309,7 +456,19 @@ def get_random_color():
 
 def setup_camera(loc, rot):
     """
-    create and setup the camera
+    Set the camera's location and rotation.
+
+    Parameters
+    ----------
+    loc : tuple
+        The (x, y, z) location for the camera.
+    rot : tuple
+        The (x, y, z) rotation for the camera in radians.
+
+    Returns
+    -------
+    bpy.types.Object
+        The camera object.
     """
     bpy.ops.object.camera_add(location=loc, rotation=rot)
     camera = active_object()
@@ -356,6 +515,19 @@ def set_scene_props(fps, seconds):
 
 
 def scene_setup(i=0):
+    """
+    Set up the Blender scene with initial settings.
+
+    Parameters
+    ----------
+    i : int, optional
+        An index for the project file naming (default is 0).
+
+    Returns
+    -------
+    dict
+        A context dictionary containing the frame count.
+    """
     fps = 30
     loop_seconds = 12
     frame_count = fps * loop_seconds
@@ -391,8 +563,10 @@ def scene_setup(i=0):
     return context
 
 
-# Setup area lights with parameters
 def add_light():
+    """
+    Add an area light to the scene with a random color.
+    """
     bpy.ops.object.light_add(type="AREA", radius=1, location=(0, 0, 2))  # Position of the light on the axis
     bpy.context.object.data.energy = 100
     bpy.context.object.data.color = get_random_color()[:3]
@@ -400,6 +574,9 @@ def add_light():
 
 
 def apply_glare_composite_effect():
+    """
+    Apply a glare effect to the rendered output using compositing nodes.
+    """
     bpy.context.scene.use_nodes = True
 
     render_layer_node = bpy.context.scene.node_tree.nodes.get("Render Layers")
@@ -422,20 +599,12 @@ def apply_glare_composite_effect():
     bpy.context.scene.node_tree.links.new(node_glare.outputs["Image"], comp_node.inputs["Image"])
 
 
-# Renaming functions for ease of use
-# -----------------------------------------------
-
-# Return name of currently active/selected object
-def active_object():
-    return bpy.context.active_object
-
-
-# render the animation
 def render_loop():
+    """
+    render the animation
+    """
     bpy.ops.render.render(animation=True)
 
-
-# ------------------------------------------------
 
 ################################################
 # H E L P E R    F U N C T I O N S    E N D
@@ -443,6 +612,9 @@ def render_loop():
 
 
 def apply_metaball_material():
+    """
+    Apply a reflective material with a random color to the first metaball in the scene.
+    """
     color = get_random_color()
     material = create_reflective_material(color, name="metaball", roughness=0.1, specular=0.5)
 
@@ -451,6 +623,20 @@ def apply_metaball_material():
 
 
 def create_metaball_path(context):
+    """
+    Create a circular path for metaballs to follow and animate its rotation.
+
+    Parameters
+    ----------
+    context : dict
+        A context dictionary containing the frame count.
+
+    Returns
+    -------
+    bpy.types.Object
+        The created path object.
+    """
+
     bpy.ops.curve.primitive_bezier_circle_add()  # Add horizontal circle
     path = active_object()
 
@@ -470,6 +656,14 @@ def create_metaball_path(context):
 
 
 def create_metaball(path):
+    """
+    Create a metaball and make it follow a given path.
+
+    Parameters
+    ----------
+    path : bpy.types.Object
+        The path object for the metaball to follow.
+    """
     bpy.ops.object.metaball_add()
     ball = active_object()  # Get the newly added metaball
 
@@ -483,6 +677,15 @@ def create_metaball(path):
 
 
 def create_centerpiece(context):
+    """
+    Create a centerpiece composed of multiple metaballs following paths.
+
+    Parameters
+    ----------
+    context : dict
+        A context dictionary containing the frame count.
+    """
+
     metaball_count = 10
 
     for _ in range(metaball_count):
@@ -494,7 +697,16 @@ def create_centerpiece(context):
 
 
 def create_background():
-    pass
+    """
+    Create a circular background object with an emission material.
+    """
+    bpy.ops.curve.primitive_bezier_circle_add(radius=1.5)
+    bpy.context.object.data.render_resolution_u = 64
+    bpy.context.object.data.bevel_depth = 0.05
+
+    color = get_random_color()
+
+    apply_emission_material(color, energy=30)
 
 
 def main():
@@ -502,6 +714,7 @@ def main():
     create_centerpiece(context)
     create_background()
     add_light()
+    apply_glare_composite_effect()
 
 
 if __name__ == "__main__":
